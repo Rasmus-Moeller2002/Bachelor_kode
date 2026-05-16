@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+#Henter ikke vores fortrolige data
+spx_total_return.csv
+
