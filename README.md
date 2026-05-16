@@ -3,7 +3,7 @@
 Dette repository indeholder en oversigt over anvendte biblioteker og en kort forklaring af hvert scipts funktion.  
 
 ## 📦 Påkrævede pakker og biblioteker
-Vi har samlet en liste over alle de nødvendige biblioteker i `Påkrævede biblioteker`. 
+Vi har samlet en liste over alle de nødvendige biblioteker i filen `requirements.txt`. 
 
 ## 📊 Bemærkning om data
 Det bagvedliggende datasæt (`spx_total_return.csv`), som anvendes i projektet, er **ikke** inkluderet i dette offentlige repository (styret via `.gitignore`). For at køre koden lokalt, kræves en tilsvarende CSV-fil placeret i projektets rodmappe.
