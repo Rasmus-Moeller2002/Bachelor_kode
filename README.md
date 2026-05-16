@@ -1,4 +1,4 @@
-# Bachelorprojekt: Value at Risk (Python-kode)
+# Bachelorprojekt: Value at Risk 
 
 Dette repository indeholder en oversigt over anvendte biblioteker og en kort forklaring af hvert scipts funktion.  
 
