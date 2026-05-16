@@ -220,3 +220,6 @@ __marimo__/
 #Henter ikke vores fortrolige data
 spx_total_return.csv
 
+#Henter ikke script der tæller tegn
+anslag_counter.py
+
