@@ -20,7 +20,7 @@ Her er en funktionel oversigt over de scripts, der er anvendt i projektet:
 * `plot.py`: Genererer Q-Q plots af log-afkastene op imod de valgte fordelingsantagelser (Normalfordelingen og t-fordelingen) 
 
 ### 2. Modelbygning og estimation (1-dags horisont)
-* `1_dags VaR.py`: Beregner de estimerede VaR- og ES-værdier for både de statiske modeller og GARCH-modellerne. Scriptet plotter desuden Q-Q plots for de standardiserede residualer og VaR- og ES-estimaterne, og udfører en vægtet Ljung-Box test på de standardiserede residualer.
+* `1_dags VaR.py`: Beregner de estimerede VaR- og ES-værdier for både de statiske modeller og GARCH-modellerne. Scriptet plotter desuden Q-Q plots for de standardiserede residualer og plotter VaR- og ES-estimaterne, og udfører en vægtet Ljung-Box test på de standardiserede residualer.
 
 ### 3. Evaluering og Backtesting
 * `parametrisk rullende vindue.py`: Udfører Kupiec's (POF) og Christoffersens (independence) backtests på de to statiske modeller og viser resultaterne grafisk.
