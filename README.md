@@ -30,5 +30,5 @@ Her er en funktionel oversigt over de scripts, der er anvendt i projektet:
 ### 4. Monte Carlo-simulering og tids-aggregering (10-dages horisont)
 * `MCS.py`: Udregner 10-dages VaR og ES analytisk for Statisk-Normal-modellen. Udfører desuden Monte Carlo Simulation (MCS) med 10.000 gentagelser for at simulere 10-dages afkast for alle projektets 5 modeller, og beregner efterfølgende VaR og ES på baggrund af de simulerede fordelinger.
 
-### Visualisering (R-kode)
+### 5. Visualisering (R-kode)
 *`plots.R`: Vi har valgt at generere udvalgte plots (stationaritet og ACF) i R ved hjælp af `ggplot2`, da dette bibliotek giver et mere æstetisk udtryk til selve bachelorrapporten.
