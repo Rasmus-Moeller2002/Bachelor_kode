@@ -1,7 +1,12 @@
-#Påkrævede biblioteker
+#Påkrævede biblioteker i Python
 pandas
 numpy
 statsmodels
 matplotlib
 scipy
 arch
+
+#Påkrævede biblioteker i R
+ggplot2
+patchwork
+forecast
