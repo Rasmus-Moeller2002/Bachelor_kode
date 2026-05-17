@@ -14,7 +14,7 @@ Det bagvedliggende datasæt (`spx_total_return.csv`), som anvendes i projektet, 
 
 Her er en funktionel oversigt over de scripts, der er anvendt i projektet:
 
-### 1. Dataanalyse og præliminære tests
+### 1. Dataanalyse og tests
 * `stationaritet.py`: Tester om tidsserien (log-afkast) er stationær ved brug af en Augmented Dickey-Fuller (ADF) test.
 * `autokorrelation.py`: Tester for autokorrelation i tidsserien ved hjælp af en Ljung-Box test.
 * `plot.py`: Genererer Q-Q plots af log-afkastene op imod de valgte fordelingsantagelser (Normalfordelingen og t-fordelingen) 
