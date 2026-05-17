@@ -2,20 +2,19 @@ import pandas as pd
 import numpy as np
 from statsmodels.tsa.stattools import adfuller
 
-# Antager at du allerede har indlæst din data:
+#Indlæs data
 data =  pd.read_csv("spx_total_return.csv", index_col=0)
-priser = data['SPXT INDEX']
 
-# 1. Definer de tre tidsrækker
-# Rå priser har vi allerede i 'priser'
+# 1. Definerer 3 tidsrækker
+priser = data['SPXT INDEX']
 simple_returns = priser.pct_change().dropna()
 log_returns = np.log(priser).diff().dropna()
 
-# 2. Lav en smart funktion til at køre ADF-testen
+# 2. Funktion til at køre ADF-testen
 def test_stationarity(timeseries, name):
     print(f"--- Augmented Dickey-Fuller Test for: {name} ---")
     
-    # Kør testen (autolag='AIC' lader Python finde det optimale antal lags)
+    # Kør testen ADF-testen (autolag='AIC' lader Python finde det optimale antal lags)
     result = adfuller(timeseries, autolag='AIC')
     
     adf_statistic = result[0]

@@ -1,21 +1,16 @@
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from statsmodels.stats.diagnostic import acorr_ljungbox
-from statsmodels.tsa.stattools import acf # TILFØJET TIL DEN VÆGTEDE TEST
-
+from statsmodels.tsa.stattools import acf 
 from arch import arch_model
 import os
 
-# --- NY FUNKTION TIL VÆGTET LJUNG-BOX TEST ---
+# FUNKTION TIL VÆGTET LJUNG-BOX TEST FOR KVADREREDE STANDARDISEREDE RESIDUALER
 def weighted_ljung_box_sq(x, lags):
-    """
-    Weighted Ljung-Box test for squared residuals using analytical 
-    Gamma approximations (alpha and beta) from Fisher & Gallagher (2012).
-    """
+
     n = len(x)
     max_lag = max(lags)
     r = acf(x, nlags=max_lag, fft=True)[1:] 
@@ -35,7 +30,7 @@ def weighted_ljung_box_sq(x, lags):
         beta_scale = (2 * (2 * m + 1)) / (3 * m)
         
         # 3. Udregn P-værdi (Højre hale af Gamma-fordelingen)
-        # Vi bruger stats.gamma.sf (Survival Function), som er det samme som 1 - cdf
+        # stats.gamma.sf (Survival Function), er det samme som 1 - cdf
         p_val = stats.gamma.sf(q_stat, a=alpha, scale=beta_scale)
             
         results.append({
@@ -55,12 +50,9 @@ def weighted_ljung_box_sq(x, lags):
     
     return df_results
 
+# FUNKTION TIL VÆGTET LJUNG-BOX TEST FOR STANDARDISEREDE RESIDUALER
 def weighted_ljung_box_mean(x, lags, dof=0):
-    """
-    Vægtet Ljung-Box test til ALMINDELIGE standardiserede residualer.
-    Bruger Ligning 5, 7 og 8 fra Fisher & Gallagher (2012).
-    'dof' er (p+q) fra ARMA-modellen. Default er 0 for ARMA(0,0).
-    """
+    
     n = len(x)
     max_lag = max(lags)
     # Autokorrelation af de almindelige residualer
@@ -86,6 +78,7 @@ def weighted_ljung_box_mean(x, lags, dof=0):
         beta_scale = numerator_beta / denominator_beta
         
         # 3. Udregn P-værdi (Højre hale af Gamma-fordelingen)
+        # stats.gamma.sf (Survival Function), er det samme som 1 - cdf
         p_val = stats.gamma.sf(q_stat, a=alpha, scale=beta_scale)
             
         results.append({
@@ -112,23 +105,21 @@ grafer_mappe = os.path.join(bachelor_mappe, "Grafer")
 if not os.path.exists(grafer_mappe):
     os.makedirs(grafer_mappe)
 
-# --- 2. HENT DATA ---
-# Vi bruger HELE datasættet til det endelige forecast
+# Indlæs data
 df = pd.read_csv("spx_total_return.csv", index_col=0)
 priser = df['SPXT INDEX']
-# Ganger med 100 som aftalt for GARCH-optimeringen
 afkast = 100 * np.log(priser).diff().dropna() 
 
 konfidensniveau = 0.95
 c_alpha = 1 - konfidensniveau
 
 print("\n" + "="*60)
-print(f" ENDELIG 1-DAGS VaR BEREGNING FOR I MORGEN ({konfidensniveau*100}%)")
+print(f"1-DAGS VaR BEREGNING FOR I MORGEN ({konfidensniveau*100}%)")
 print("="*60)
 
-# ==========================================
-# 1. PARAMETRISK VaR og ES
-# ==========================================
+# ====================
+# 1. STATISK VaR og ES
+# ====================
 mu_statisk = np.mean(afkast)
 sigma_statisk = np.std(afkast)
 
@@ -140,16 +131,16 @@ var_param_norm = (mu_statisk + z_score * sigma_statisk)
 pdf_norm = stats.norm.pdf(z_score)
 ES_norm = (mu_statisk - sigma_statisk * (pdf_norm / c_alpha))
 
-# Student-t Statisk VaR
+# t-fordeling Statisk VaR
 df_statisk = stats.t.fit(afkast)[0]
 t_score = stats.t.ppf(c_alpha, df=df_statisk)
 
-# Vi omregner standardafvigelse (sigma) til skaleringsparameteren (lambda)
+# Omregner standardafvigelse (sigma) til skaleringsparameteren (lambda)
 # Formel fra side 95 i statistikbogen
 lambda_scale = sigma_statisk * np.sqrt((df_statisk - 2) / df_statisk)
 var_param_t = (mu_statisk + lambda_scale * t_score)
 
-#Student-t Statisk ES
+#t-fordeling Statisk ES
 pdf_t = stats.t.pdf(t_score, df=df_statisk)
 
 #Udregn brøken for de tykke haler
@@ -165,22 +156,20 @@ print(f"-> Student-t VaR: {var_param_t:.4f}%")
 print(f"-> Normal ES: {ES_norm:.4f}%")
 print(f"-> Student-t ES: {ES_t:.4f}%")
 
-# --- TILFØJELSE: Pre-diagnostik for ARCH-effekter (Før GARCH) ---
+# Pre-diagnostik for ARCH-effekter
 print("\n" + "="*60)
 print(" PRE-DIAGNOSTIK: Test for volatilitetsklynger i markedsstød")
 print("="*60)
 
-# Udregner markedsstødet (a_t) 
+# Udregner markedsstød og kvadrerede markedsstød 
 a_t = afkast - mu_statisk
-
-# Kvadrerer stødene for at gøre klar til at teste for afhængighed i variansen
 a_t_sq = a_t ** 2
 
-# Udfører den NORMALE Ljung-Box test (Vi bruger statsmodels her, da sigma ikke er estimeret endnu)
-print("\n--- Ljung-Box Test på rå kvadrerede stød ---")
+# Udfører Ljung-Box test 
+print("\n--- Ljung-Box Test på kvadrerede stød ---")
 lb_test_pre = acorr_ljungbox(a_t_sq, lags=[5, 10, 20], model_df=0, return_df=True)
 
-# Formaterer outputtet, så det matcher resten af jeres script
+# Omdøber kolonnerne så de er på dansk
 lb_test_pre.columns = ['Test-Statistik (Q)', 'P-værdi']
 lb_test_pre.index.name = 'Lags'
 lb_test_pre['P-værdi'] = lb_test_pre['P-værdi'].apply(lambda x: '< 2.2e-16' if x < 2.2e-16 else f"{x:.6f}")
@@ -190,58 +179,63 @@ print(lb_test_pre)
 print("\nFortolkning (Pre-diagnostik):")
 print("H0: Der er INGEN volatilitetsklynger (Data er hvid støj).")
 print("H1: Der ER volatilitetsklynger i dataene.")
-print("-> Vi forventer/ønsker en P-værdi UNDER 0.05, så vi KAN afvise H0 og dermed retfærdiggøre brugen af GARCH!")
+print("-> Vi forventer en P-værdi UNDER 0.05, så vi KAN afvise H0 og dermed retfærdiggøre brugen af GARCH!")
 
-# ==========================================
-# 2. GARCH(1,1) VaR (Dynamisk - betinget af i dag)
-# ==========================================
+# =================
+# 2. GARCH(1,1) VaR 
+# =================
 print("\n" + "="*60)
 print(" DYNAMISK GARCH(1,1) VaR (Trænet på HELE datasættet)")
 print("="*60)
 
-# ------------------------------------------
+# ---------------
 # A) GARCH Normal
-# ------------------------------------------
+# ---------------
+# Bygger og fitter GARCH-Normal-modellen
 am_norm = arch_model(afkast, mean='Constant', vol='GARCH', p=1, q=1, dist='Normal')
 res_norm = am_norm.fit(disp='off')
 forecast_norm = res_norm.forecast(horizon=1)
 
+# Gemmer middelværdien og den forudsagte volatilitet og beregner VaR
 mu_garch_norm = forecast_norm.mean.iloc[-1].values[0]
 sigma_garch_norm = np.sqrt(forecast_norm.variance.iloc[-1].values[0])
 var_garch_norm = (mu_garch_norm + z_score * sigma_garch_norm)
 
-#ES for normalfordelt GARCH
+# ES for normalfordelt GARCH
 es_garch_norm = (mu_garch_norm - sigma_garch_norm * (pdf_norm / c_alpha))
 
 print("\n--- GARCH(1,1) NORMAL PARAMETRE ---")
 print(res_norm.summary())
 
+# Gemmer de standardiserede residualer
 std_resid_norm = res_norm.std_resid.dropna()
 std_resid_norm_sq = std_resid_norm ** 2
 
-# ÆNDRET TIL VÆGTET TEST
+# Udfører den vægtede Ljung-Box test på de kvadrerede standardiserede residualer
 print("\n--- Vægtet Ljung-Box Test NORMAL (Er volatilitetsklyngerne fjernet af GARCH?) ---")
 lb_test_post_norm = weighted_ljung_box_sq(std_resid_norm_sq, lags=[5, 10, 20])
 print(lb_test_post_norm)
 
-# ÆNDRET TIL VÆGTET TEST
+# Udfører den vægtede Ljung-Box test på de standardiserede residualer
 print("\n--- Vægtet Ljung-Box Test NORMAL (Er der autokorrelation i middelværdien?) ---")
 lb_test_mean_norm = weighted_ljung_box_mean(std_resid_norm, lags=[5, 10, 20])
 print(lb_test_mean_norm)
 
-# En lille hjælpende tekst til fortolkningen:
+# Hjælpende tekst til fortolkningen
 print("\nFortolkning (Post-diagnostik for Normal):")
-print("H0: Der er INGEN autokorrelation tilbage (GARCH-Normal er en succes!).")
+print("H0: Der er INGEN autokorrelation tilbage.")
 print("H1: Der ER autokorrelation tilbage (Modellen fanger ikke alt).")
 print("-> Vi ønsker en P-værdi OVER 0.05, så vi IKKE kan afvise H0.")
 
-# ------------------------------------------
-# B) GARCH Student-t
-# ------------------------------------------
+# --------------------
+# B) GARCH t-fordeling
+# --------------------
+# Bygger og fitter GARCH-t-modellen
 am_t = arch_model(afkast, mean='Constant', vol='Garch', p=1, q=1, dist='StudentsT')
 res_t = am_t.fit(disp='off')
 forecast_t = res_t.forecast(horizon=1)
 
+# Gemmer middelværdien og den forudsagte volatilitet og beregner VaR
 mu_garch_t = forecast_t.mean.iloc[-1].values[0]
 sigma_garch_t = np.sqrt(forecast_t.variance.iloc[-1].values[0])
 df_garch = res_t.params['nu']
@@ -254,7 +248,7 @@ t_score_garch = stats.t.ppf(c_alpha, df=df_garch)
 lambda_garch = sigma_garch_t * np.sqrt((df_garch - 2) / df_garch)
 var_garch_t = (mu_garch_t + lambda_garch * t_score_garch)
 
-#ES for Student-t fordeling GARCH
+#ES for GARCH-t
 # Henter tætheden ved t-scoren
 pdf_t_garch = stats.t.pdf(t_score_garch, df=df_garch)
 # Regner "straffen" for de tykke haler ud
@@ -266,29 +260,30 @@ es_garch_t = (mu_garch_t - lambda_garch * (pdf_t_garch / c_alpha) * hale_straf_g
 print("\n--- GARCH(1,1) STUDENT-t PARAMETRE ---")
 print(res_t.summary())
 
+# Gemmer de standardiserede residualer
 std_resid_t = res_t.std_resid.dropna()
 std_resid_t_sq = std_resid_t ** 2
 
-# ÆNDRET TIL VÆGTET TEST
+# Udfører den vægtede Ljung-Box test på de kvadrerede standardiserede residualer
 print("\n--- Vægtet Ljung-Box Test t-fordeling (Er volatilitetsklyngerne fjernet af GARCH?) ---")
 lb_test_post_t = weighted_ljung_box_sq(std_resid_t_sq, lags=[5, 10, 20])
 print(lb_test_post_t)
 
-# ÆNDRET TIL VÆGTET TEST
+# Udfører den vægtede Ljung-Box test på de standardiserede residualer
 print("\n--- Vægtet Ljung-Box Test t-fordeling (Er der autokorrelation i middelværdien?) ---")
 lb_test_mean_t = weighted_ljung_box_mean(std_resid_t, lags=[5, 10, 20])
 print(lb_test_mean_t)
 
-# En lille hjælpende tekst til fortolkningen af standardiserede kvadrerede residualer:
+# Hjælpende tekst til fortolkningen
 print("\nFortolkning (Post-diagnostik):")
 print("H0: Der er INGEN autokorrelation tilbage (GARCH-modellen er en succes!).")
 print("H1: Der ER autokorrelation tilbage (Modellen fanger ikke alt).")
 print("-> Vi ønsker en P-værdi OVER 0.05, så vi IKKE kan afvise H0.")
 
 
-# ------------------------------------------
+# --------------------------------
 # C) Print Endelige VaR Resultater
-# ------------------------------------------
+# --------------------------------
 print(f"\n--- ENDELIGE GARCH FORECASTS FOR I MORGEN ({konfidensniveau*100}%) ---")
 print(f"Forudsagt volatilitet (Normal): {sigma_garch_norm:.4f}%")
 print(f"Forudsagt volatilitet (Student-t): {sigma_garch_t:.4f}% (df={df_garch:.2f})")
@@ -297,9 +292,9 @@ print(f"-> GARCH Student-t VaR: {var_garch_t:.4f}%")
 print(f"-> NORMAL ES for GARCH: {es_garch_norm:.4f}%")
 print(f"-> Student-t ES for GARCH: {es_garch_t:.4f}%")
 
-# ==========================================
+# =================================================
 # 3. SAMLET VISUALISERING (Opdelt i separate plots)
-# ==========================================
+# =================================================
 
 # Definer x-aksen til de teoretiske kurver
 x_axis = np.linspace(afkast.min(), afkast.max(), 1000)
@@ -308,9 +303,9 @@ x_axis = np.linspace(afkast.min(), afkast.max(), 1000)
 pdf_n_curve = stats.norm.pdf(x_axis, loc=mu_statisk, scale=sigma_statisk)
 pdf_t_curve = stats.t.pdf(x_axis, df=df_statisk, loc=mu_statisk, scale=lambda_scale)
 
-# ---------------------------------------------------------
-# PLOT 1: Statisk Parametrisk VaR + Teoretiske Fordelinger
-# ---------------------------------------------------------
+# --------------------------------------------
+# PLOT 1: Statisk VaR + Teoretiske Fordelinger
+# --------------------------------------------
 plt.figure(figsize=(10, 6))
 plt.hist(afkast, bins=150, density=True, alpha=0.4, color='steelblue', label='Empirisk Fordeling (S&P 500)')
 
@@ -331,33 +326,9 @@ plt.savefig(gem_sti_param, dpi=300, bbox_inches='tight')
 #plt.yscale('log')
 plt.show()
 
-
-# ---------------------------------------------------------
-# PLOT 2: Dynamisk GARCH VaR Forecast
-# ---------------------------------------------------------
-plt.figure(figsize=(10, 6))
-plt.hist(afkast, bins=150, density=True, alpha=0.4, color='steelblue', label='Empirisk Fordeling (S&P 500)')
-
-# Tegn VaR grænserne for GARCH
-plt.axvline(x=var_garch_norm, color='blue', linestyle='-', linewidth=2.5, label=f'GARCH-Normal VaR: {var_garch_norm:.2f}%')
-plt.axvline(x=var_garch_t, color='darkorange', linestyle='-', linewidth=2.5, label=f'GARCH-t VaR: {var_garch_t:.2f}%')
-
-plt.title(f"Dynamisk GARCH(1,1) 1-dags VaR ({konfidensniveau*100}%)", fontsize=14, fontweight='bold')
-plt.xlabel("Dagligt log-afkast (%)")
-plt.ylabel("Tæthed")
-plt.legend(loc='upper left', framealpha=0.9)
-plt.xlim(-6, 4) 
-plt.grid(axis='y', alpha=0.3)
-
-# Gem Plot 2
-gem_sti_garch = os.path.join(grafer_mappe, "GARCH_VaR_Forecast.png")
-plt.savefig(gem_sti_garch, dpi=300, bbox_inches='tight')
-plt.show()
-
-
-# ---------------------------------------------------------
-# PLOT 3: Statisk Parametrisk VaR og Expected Shortfall (ES)
-# ---------------------------------------------------------
+# ----------------------------------------------------------
+# PLOT 2: Statisk VaR og Expected Shortfall (ES)
+# ----------------------------------------------------------
 plt.figure(figsize=(10, 6))
 plt.hist(afkast, bins=150, density=True, alpha=0.4, color='steelblue', label='Empirisk Fordeling (S&P 500)')
 
@@ -376,23 +347,22 @@ plt.legend(loc='upper left', framealpha=0.9)
 plt.xlim(-6, 4) 
 plt.grid(axis='y', alpha=0.3)
 
-# Gem Plot 3
+# Gem Plot 2
 gem_sti_param_es = os.path.join(grafer_mappe, "Statisk_VaR_og_ES.png")
 plt.savefig(gem_sti_param_es, dpi=300, bbox_inches='tight')
 plt.show()
 
-
-# ---------------------------------------------------------
-# PLOT 4: Dynamisk GARCH VaR og Expected Shortfall (ES)
-# ---------------------------------------------------------
+# -------------------------
+# PLOT 3: GARCH VaR og (ES)
+# -------------------------
 plt.figure(figsize=(10, 6))
 plt.hist(afkast, bins=150, density=True, alpha=0.4, color='steelblue', label='Empirisk Fordeling (S&P 500)')
 
-# GARCH Normal: VaR og ES
+# GARCH-Normal: VaR og ES
 plt.axvline(x=var_garch_norm, color='blue', linestyle='-', linewidth=2, label=f'GARCH-Normal VaR: {var_garch_norm:.2f}%')
 plt.axvline(x=es_garch_norm, color='blue', linestyle=':', linewidth=3.5, label=f'GARCH-Normal ES: {es_garch_norm:.2f}%')
 
-# GARCH Student-t: VaR og ES
+# GARCH-t: VaR og ES
 plt.axvline(x=var_garch_t, color='darkorange', linestyle='-', linewidth=2, label=f'GARCH-t VaR: {var_garch_t:.2f}%')
 plt.axvline(x=es_garch_t, color='darkorange', linestyle=':', linewidth=3.5, label=f'GARCH-t ES: {es_garch_t:.2f}%')
 
@@ -403,37 +373,36 @@ plt.legend(loc='upper left', framealpha=0.9)
 plt.xlim(-6, 4) 
 plt.grid(axis='y', alpha=0.3)
 
-# Gem Plot 4
+# Gem Plot 3
 gem_sti_garch_es = os.path.join(grafer_mappe, "GARCH_VaR_og_ES.png")
 plt.savefig(gem_sti_garch_es, dpi=300, bbox_inches='tight')
 plt.show()
 
-# ---------------------------------------------------------
-# --- NYT: PLOT 5: Q-Q Plots af Standardiserede Residualer ---
-# ---------------------------------------------------------
+# -----------------------------------------------
+# PLOT 4: Q-Q Plots af Standardiserede Residualer 
+# -----------------------------------------------
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-# Plot 1: Q-Q for GARCH(1,1) Normalfordeling
+# Plot 1: Q-Q for GARCH-Normal
 sm.qqplot(std_resid_norm, dist=stats.norm, fit=True, line='45', ax=axes[0], 
           markerfacecolor='black', markeredgecolor='black', alpha=0.5)
 axes[0].set_title("GARCH-Normal standardiserede residualer", fontsize=12, fontweight='bold')
 axes[0].grid(True, alpha=0.3)
-# --- NYT: Danske akser til Plot 1 ---
+# Danske akser til Plottet
 axes[0].set_xlabel("Teoretiske Kvantiler", fontsize=11)
 axes[0].set_ylabel("Empiriske Kvantiler", fontsize=11)
 
-# Plot 2: Q-Q for GARCH(1,1) Student-t fordeling
-# Matematisk vigtig skalering af den teoretiske t-fordeling i plottet:
+# Plot 2: Q-Q for GARCH-t
 scale_factor_qq = np.sqrt((df_garch - 2) / df_garch)
 sm.qqplot(std_resid_t, dist=stats.t, distargs=(df_garch,), loc=0, scale=scale_factor_qq, 
           line='45', ax=axes[1], markerfacecolor='black', markeredgecolor='black', alpha=0.5)
 axes[1].set_title(f"GARCH-t standardiserede residualer (df={df_garch:.2f})", fontsize=12, fontweight='bold')
 axes[1].grid(True, alpha=0.3)
-# --- NYT: Danske akser til Plot 2 ---
+# Danske akser til Plottet
 axes[1].set_xlabel("Teoretiske Kvantiler", fontsize=11)
 axes[1].set_ylabel("Empiriske Kvantiler", fontsize=11)
 
-# Gør layoutet pænt og gem
+# Gør layoutet pænt og gem plot 4
 plt.tight_layout()
 gem_sti_qq = os.path.join(grafer_mappe, "QQ_Plots_GARCH_Residualer.png")
 plt.savefig(gem_sti_qq, dpi=300, bbox_inches='tight')

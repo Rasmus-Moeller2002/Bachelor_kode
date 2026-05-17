@@ -11,27 +11,25 @@ grafer_mappe = os.path.join(bachelor_mappe, "Grafer")
 if not os.path.exists(grafer_mappe):
     os.makedirs(grafer_mappe)
 
-# --- 2. HENT DATA ---
-# Vi bruger HELE datasættet til det endelige forecast
+# Indlæs data
 df = pd.read_csv("spx_total_return.csv", index_col=0)
 priser = df['SPXT INDEX']
-# Ganger med 100 som aftalt for GARCH-optimeringen
 afkast = 100 * np.log(priser).diff().dropna()
 
-# ==========================================
+# =====================================
 # 1. Udregn parametre til fordelingerne
-# ==========================================
+# =====================================
 # Parametre for Normalfordeling
 mu_norm = np.mean(afkast)
-sigma_norm = np.std(afkast, ddof=1) # ddof=1 for stikprøve-standardafvigelse
+sigma_norm = np.std(afkast)
 
-# Parametre for Student-t fordeling (Fitter data for at finde de bedste parametre)
+# Parametre for t-fordeling (Fitter data for at finde de bedste parametre)
 df_t, loc_t, scale_t = stats.t.fit(afkast)
 
 
-# ==========================================
-# PLOT 1: QQ-Plots Side-om-Side (HELT RENE)
-# ==========================================
+# =============================
+# PLOT 1: QQ-Plots Side-om-Side
+# =============================
 fig2, (ax_qq1, ax_qq2) = plt.subplots(1, 2, figsize=(14, 6), dpi=150)
 
 # --- QQ-Plot 1: Normalfordeling ---
@@ -45,14 +43,14 @@ ax_qq1.set_ylabel(" Empiriske Kvantiler", fontsize=12)
 # Formatering af prikker og streg
 prikker_norm, streg_norm = ax_qq1.get_lines()
 prikker_norm.set_markerfacecolor('black')
-prikker_norm.set_markeredgecolor('black') # Sort kant giver et skarpere og renere look
+prikker_norm.set_markeredgecolor('black')
 prikker_norm.set_alpha(0.5)
 streg_norm.set_color('red')
 streg_norm.set_linewidth(2)
 
 ax_qq1.grid(True, which='both', linestyle='-', linewidth=0.5, alpha=0.5)
 
-# --- QQ-Plot 2: Student-t fordeling ---
+# --- QQ-Plot 2: t-fordeling ---
 stats.probplot(afkast, dist=stats.t, sparams=(df_t,), plot=ax_qq2)
 
 # Sørger for at der ikke er uønsket tekst, og sætter vores egne titler
